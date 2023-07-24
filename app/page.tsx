@@ -1,9 +1,10 @@
 'use client';
 import { ClipboardEvent, useLayoutEffect, useRef, useState } from 'react';
 import { RoomDefinition, buildings } from './places';
-import { FormControl, FormControlLabel, FormGroup, Switch } from '@mui/material';
+import { FormControl, FormControlLabel, FormGroup, Switch, Button } from '@mui/material';
 import MenuItem from '@mui/material/MenuItem';
 import { Select, SelectChangeEvent, InputLabel } from '@mui/material';
+import { useLocalStorage } from 'usehooks-ts';
 
 type Timetable = {
   code: string;
@@ -37,7 +38,7 @@ type ScheduleDataCols = {
 }[];
 
 export default function Home() {
-  const [scheduleData, setScheduleData] = useState<ScheduleDataCols>([]);
+  const [scheduleData, setScheduleData] = useLocalStorage<ScheduleDataCols>('timetable', []);
   const [tableDim, setTableDim] = useState({ header: { width: 0, height: 0 }, timetable: { width: 0, height: 0 } });
   const headerRow = useRef<HTMLTableCellElement>(null);
   const timetableCell = useRef<HTMLTableCellElement>(null);
@@ -208,7 +209,7 @@ export default function Home() {
         
         </div>
       </div>
-      <input onPaste={handlePaste} className="w-full max-w-5xl p-4 mt-8 text-center border border-gray-300 rounded-lg dark:border-neutral-700 dark:bg-zinc-800/30 dark:text-white lg:mt-0 lg:w-auto lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30" placeholder="Paste Here" />
+      <input onPaste={handlePaste} value="" className="w-full max-w-5xl p-4 mt-8 text-center border border-gray-300 rounded-lg dark:border-neutral-700 dark:bg-zinc-800/30 dark:text-white lg:mt-0 lg:w-auto lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30" placeholder="Paste Here" />
       <FormGroup>
         <FormControl sx={{ m: 1, minWidth: 120 }} size="small" variant='filled' color='primary'>
           <InputLabel id="language">Language</InputLabel>
@@ -225,6 +226,7 @@ export default function Home() {
         </FormControl>
         <FormControlLabel control={<Switch defaultChecked />} label="Hide Teachers" value={hideTeacher} onChange={(e,v) => setHideTeacher(v)}/>
       </FormGroup>
+      <Button onClick={() => setScheduleData([])}>Clear</Button>
       <div className="mb-32 text-center lg:mb-0 w-full">
         {/* Timetable, Relative overlay */}
         <div className="relative w-full">
