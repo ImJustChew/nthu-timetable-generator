@@ -5,6 +5,9 @@ import { FormControl, FormControlLabel, FormGroup, Switch, Button } from '@mui/m
 import MenuItem from '@mui/material/MenuItem';
 import { Select, SelectChangeEvent, InputLabel } from '@mui/material';
 import { useLocalStorage } from 'usehooks-ts';
+import * as ics from 'ics'
+import { differenceInMinutes, getHours, getMinutes, parse } from 'date-fns';
+import { useRouter } from 'next/navigation';
 
 type Timetable = {
   code: string;
@@ -44,6 +47,7 @@ export default function Home() {
   const timetableCell = useRef<HTMLTableCellElement>(null);
   const [lang, setLang] = useState<'chinese'|'english'>('chinese');
   const [hideTeacher, setHideTeacher] = useState(false);
+  const router = useRouter();
 
   const handleChange = (event: SelectChangeEvent) => {
     setLang(event.target.value as any);
@@ -142,6 +146,60 @@ export default function Home() {
     }
   }
 
+  const generateICS = (scheduleData: ScheduleDataCols[number]) => {
+    console.log(scheduleTimeSlots[scheduleData.startTime])
+    // scheduleData.startTime
+    const start = parse(
+      scheduleTimeSlots[scheduleData.startTime]!.start ,
+      'HH:mm',
+      new Date()
+    );
+    const end = parse(
+      scheduleTimeSlots[scheduleData.startTime]!.end ,
+      'HH:mm',
+      new Date()
+    );
+    const duration = differenceInMinutes(end, start);
+    const day = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'][scheduleData.dayOfWeek];
+    ics.createEvent({
+      title: scheduleData.course.course[lang],
+      description: `${scheduleData.course.teacher.map(teacher => teacher[lang]).join(', ')}`,
+      start: [2023, 9, 10, getHours(start), getMinutes(start)],
+      duration: { minutes: duration },
+      recurrenceRule: `FREQ=WEEKLY;BYDAY=${day};INTERVAL=1;UNTIL=20240112T000000Z`
+    }, (e, value) => {
+      console.log(value);
+      router.push(`data:text/calendar;charset=utf8,${encodeURIComponent(value)}`)
+    })
+  }
+
+  const generateICSForAll = (allSchedule: ScheduleDataCols) => {
+    const events = allSchedule.map(schedule => {
+      const start = parse(
+        scheduleTimeSlots[schedule.startTime]!.start ,
+        'HH:mm',
+        new Date()
+      );
+      const end = parse(
+        scheduleTimeSlots[schedule.startTime]!.end ,
+        'HH:mm',
+        new Date()
+      );
+      const duration = differenceInMinutes(end, start);
+      const day = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'][schedule.dayOfWeek];
+      return {
+        title: schedule.course.course[lang],
+        description: `${schedule.course.teacher.map(teacher => teacher[lang]).join(', ')}`,
+        start: [2023, 9, 10, getHours(start), getMinutes(start)] as [number, number, number, number, number],
+        duration: { minutes: duration },
+        recurrenceRule: `FREQ=WEEKLY;BYDAY=${day};INTERVAL=1;UNTIL=20240112T000000Z`
+      }
+    })
+    ics.createEvents(events, (e, value) => {
+      console.log(value);
+      window.location.assign(`data:text/calendar;charset=utf8,${encodeURIComponent(value)}`);
+    })
+  }
   const handlePaste = (e: ClipboardEvent<HTMLInputElement>) => {
     //read the copied html table
     const clipboardData = e.clipboardData.getData('text/html')
@@ -176,6 +234,8 @@ export default function Home() {
     console.log(courses);
     parseToScheduleData(courses);
   }
+  
+  
 
   const updateSize = () => {
     setTableDim({
@@ -209,7 +269,7 @@ export default function Home() {
         
         </div>
       </div>
-      <input onPaste={handlePaste} value="" className="w-full max-w-5xl p-4 mt-8 text-center border border-gray-300 rounded-lg dark:border-neutral-700 dark:bg-zinc-800/30 dark:text-white lg:mt-0 lg:w-auto lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30" placeholder="Paste Here" />
+      {scheduleData.length == 0 && <input onPaste={handlePaste} value="" className="w-full max-w-5xl p-4 mt-8 text-center border border-gray-300 rounded-lg dark:border-neutral-700 dark:bg-zinc-800/30 dark:text-white lg:mt-0 lg:w-auto lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30" placeholder="Paste Here" />}
       <FormGroup>
         <FormControl sx={{ m: 1, minWidth: 120 }} size="small" variant='filled' color='primary'>
           <InputLabel id="language">Language</InputLabel>
@@ -227,6 +287,7 @@ export default function Home() {
         <FormControlLabel control={<Switch defaultChecked />} label="Hide Teachers" value={hideTeacher} onChange={(e,v) => setHideTeacher(v)}/>
       </FormGroup>
       <Button onClick={() => setScheduleData([])}>Clear</Button>
+      <Button onClick={() => generateICSForAll(scheduleData)}>Download</Button>
       <div className="mb-32 text-center lg:mb-0 w-full">
         {/* Timetable, Relative overlay */}
         <div className="relative w-full">
@@ -277,7 +338,8 @@ export default function Home() {
                   top: tableDim.header.height + (data.startTime) * tableDim.timetable.height, 
                   width: tableDim.timetable.width - 4, 
                   height: (data.endTime - data.startTime + 1) * tableDim.timetable.height,
-                }}>
+                }}
+                >
                 <div className='flex flex-col justify-center items-center h-full text-black'>
                   <span className='text-xs lg:text-base font-bold'>{data.course.course[lang]}</span>
                   {/* <span className='text-xs'>{data.course.course.english}</span> */}
