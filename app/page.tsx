@@ -190,7 +190,7 @@ export default function Home() {
       return {
         title: schedule.course.course[lang],
         description: `${schedule.course.teacher.map(teacher => teacher[lang]).join(', ')}`,
-        start: [2023, 9, 10, getHours(start), getMinutes(start)] as [number, number, number, number, number],
+        start: [2023, 9, 10+schedule.dayOfWeek, getHours(start), getMinutes(start)] as [number, number, number, number, number],
         duration: { minutes: duration },
         recurrenceRule: `FREQ=WEEKLY;BYDAY=${day};INTERVAL=1;UNTIL=20240112T000000Z`
       }
